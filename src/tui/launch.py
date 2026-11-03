@@ -150,7 +150,15 @@ def omh_import_root() -> str:
     """
     import omh
 
-    return os.path.dirname(os.path.dirname(os.path.abspath(omh.__file__)))
+    origin = getattr(omh, '__file__', None)
+    if origin is not None:
+        return os.path.dirname(os.path.dirname(os.path.abspath(origin)))
+    search_paths = getattr(omh, '__path__', None)
+    if search_paths:
+        for entry in search_paths:
+            if entry:
+                return os.path.dirname(os.path.abspath(entry))
+    return ""
 
 
 def omh_tui_environment(

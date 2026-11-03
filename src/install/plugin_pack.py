@@ -725,7 +725,14 @@ def package_site_record() -> dict[str, str] | None:
 
     from ..plugin_bundle.omh.package_site import installed_distribution_version
 
-    site = Path(omh.__file__).resolve().parent.parent
+    origin = getattr(omh, '__file__', None)
+    if origin is not None:
+        site = Path(origin).resolve().parent.parent
+    else:
+        search_paths = getattr(omh, '__path__', None)
+        if not search_paths:
+            return None
+        site = Path(next(iter(search_paths))).resolve().parent
     try:
         version = installed_distribution_version(str(site))
     except OSError:

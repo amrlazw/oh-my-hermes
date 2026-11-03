@@ -56,6 +56,18 @@ def color_depth(environ: Mapping[str, str], tty: bool = True) -> str:
         return NO_COLOR
     if environ.get("COLORTERM", "").strip().lower() in ("truecolor", "24bit"):
         return TRUECOLOR
+    if (
+        environ.get("WT_SESSION")
+        or environ.get("WT_PROFILE_ID")
+        or environ.get("GHOSTTY_RESOURCES_DIR")
+        or environ.get("KITTY_WINDOW_ID")
+        or environ.get("WEZTERM_PANE")
+        or environ.get("VSCODE_PID")
+        or environ.get("TERM_PROGRAM", "").lower() in ("ghostty", "vscode", "wezterm", "iterm.app", "alacritty")
+        or term.startswith(("xterm-ghostty", "xterm-kitty", "foot"))
+        or term.endswith(("-direct", "-truecolor"))
+    ):
+        return TRUECOLOR
     return COLOR_256 if "256color" in term else COLOR_16
 
 

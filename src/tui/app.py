@@ -2606,7 +2606,7 @@ class App(ModesMixin, AgentViewMixin):
         if self.redraw_at is not None:
             due.append(self.redraw_at)
         elif self._busy() or self._compressing_since() is not None or self._panel_live() or self._aura_live() \
-                or self.held_submits:
+                or (self.pager is not None and self._aura_moves()) or self.held_submits:
             due.append(self.last_render + self._tick_seconds())
         if self.redraw_at is None and (background := self._background_due_at()) is not None:
             due.append(background)  # the background row's clock: once a second, on the second
@@ -3239,6 +3239,12 @@ class App(ModesMixin, AgentViewMixin):
             self.roster.apply(event.type, payload, self.clock())  # folds what it knows; raises on nothing
             if isinstance(payload, Mapping):  # a new frame for an agent: its tail is asked for again
                 self.tail_misses.pop(as_text(payload.get("subagent_id")), None)
+            if event.type in (
+                contract.SUBAGENT_SPAWN_REQUESTED,
+                contract.SUBAGENT_START,
+                contract.SUBAGENT_COMPLETE,
+            ):
+                self.poller.refresh()
         else:
             if event.type in ("message.start", "message.complete"):
                 self.lifecycle_seen += 1
@@ -3251,6 +3257,7 @@ class App(ModesMixin, AgentViewMixin):
             self._count_streamed(event.type, payload)
             if event.type == "tool.complete" and isinstance(payload, Mapping):
                 self._dag_moment(payload)
+                self.poller.refresh()
             if event.type in ("tool.complete", "message.complete") and self.git is not None:
                 self.git.refresh()  # a tool or the turn may have changed the files or the branch
             if event.type == "message.start":
@@ -7267,6 +7274,7 @@ class App(ModesMixin, AgentViewMixin):
             return  # the screen is mid-reflow; the settled redraw paints it
         now = self.clock()
         due = (self._busy() or self._compressing_since() is not None or self._panel_live() or self._aura_live()
+               or (self.pager is not None and self._aura_moves())
                or bool(self.held_submits)) and now - self.last_render >= self._tick_seconds()
         if not (self.dirty or due or self._background_due()):
             if self._wallpaper_moves() and now - self.ambient_at >= WALLPAPER_TICK_SECONDS:
@@ -7616,11 +7624,13 @@ class App(ModesMixin, AgentViewMixin):
         return int(self.clock() / TICK_SECONDS) if self.motion else 0
 
     def _tick_seconds(self) -> float:
-        """How often the loop paints while something moves: faster while the working glow's light goes round, so it
-        glides (`edge_glow.TICK_SECONDS`); the spinners still step by `TICK_SECONDS`."""
-        if self._edge_live():
+        """How often the loop paints while something moves: faster while the working glow's light goes round or
+        the DAG graph/aura is active, so it glides (`edge_glow.TICK_SECONDS`); the spinners still step by `TICK_SECONDS`."""
+        if not self.motion:
+            return REDUCED_TICK_SECONDS
+        if self._edge_live() or (self.pager is not None and self._aura_moves()):
             return EDGE_TICK_SECONDS
-        return TICK_SECONDS if self.motion else REDUCED_TICK_SECONDS
+        return TICK_SECONDS
 
     @property
     def keyboard_protocol(self) -> bool:

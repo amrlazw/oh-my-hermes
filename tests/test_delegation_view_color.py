@@ -136,6 +136,11 @@ class DepthTests(unittest.TestCase):
         cases = (
             ({"COLORTERM": "truecolor", "TERM": "xterm-256color"}, True, TRUECOLOR),
             ({"COLORTERM": "24bit"}, True, TRUECOLOR),
+            ({"WT_SESSION": "uuid"}, True, TRUECOLOR),
+            ({"GHOSTTY_RESOURCES_DIR": "/path"}, True, TRUECOLOR),
+            ({"TERM_PROGRAM": "ghostty"}, True, TRUECOLOR),
+            ({"TERM": "xterm-ghostty"}, True, TRUECOLOR),
+            ({"VSCODE_PID": "1234"}, True, TRUECOLOR),
             ({"TERM": "xterm-256color"}, True, COLOR_256),
             ({"TERM": "xterm"}, True, COLOR_16),
             ({}, True, COLOR_16),
@@ -393,7 +398,11 @@ class HudCommandTests(unittest.TestCase):
     def run_hud(self, home, environ: dict[str, str], *, tty: bool = True, extra: tuple[str, ...] = ()) -> str:
         argv = ["--omh-home", str(home.omh), "--hermes-home", str(home.hermes), "hud", "--graph", *extra]
         with patch.dict(os.environ, environ):
-            for name in ("NO_COLOR", "COLORFGBG", "COLORTERM", "OMH_OUTPUT"):
+            for name in (
+                "NO_COLOR", "COLORFGBG", "COLORTERM", "OMH_OUTPUT",
+                "WT_SESSION", "WT_PROFILE_ID", "GHOSTTY_RESOURCES_DIR",
+                "KITTY_WINDOW_ID", "WEZTERM_PANE", "VSCODE_PID", "TERM_PROGRAM",
+            ):
                 if name not in environ:
                     os.environ.pop(name, None)
             if not tty:
